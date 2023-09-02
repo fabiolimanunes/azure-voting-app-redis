@@ -45,3 +45,36 @@ stages:
         repository: devopsfabiolimanunes'
         tags: |
           $(tag)
+
+stages:
+- stage: Deploy
+  displayName: Deploy
+  jobs:
+  - deployment: Deployment
+    pool:
+      vmImage: 'ubuntu-latest'
+    environment: 'azure-vote'
+
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.x'
+              addToPath: true
+          - script: |
+              echo "Configurando o cliente AKS..."
+              az aks install-cli
+              echo "Conectando ao cluster AKS..."
+              az aks get-credentials --resource-group aks-resource-group --name fabio-aks
+              echo "Configurando o Helm..."
+              helm repo add stable https://charts.helm.sh/stable
+              echo "Implantando a aplicação com Helm..."
+              helm upgrade --install azure-vote azure-vote --namespace dev -f helm/values.yaml
+            displayName: 'Deploy no AKS com Helm'
+            env:
+              AZURE_SERVICE_CONNECTION_APPID: $(servicePrincipalId) 
+              AZURE_SERVICE_CONNECTION_PASSWORD: $(servicePrincipalKey) 
+              AZURE_SERVICE_CONNECTION_TENANT: $(tenantId) 
+
